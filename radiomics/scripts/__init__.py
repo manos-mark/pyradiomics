@@ -16,10 +16,10 @@ import pykwalify.core
 import six.moves
 
 import radiomics.featureextractor
-from . import segment, voxel
+from radiomics.scripts import segment, voxel
 
 
-class PyRadiomicsCommandLine:
+class MyPyRadiomicsCommandLine:
 
   def __init__(self, custom_arguments=None):
     self.logger = logging.getLogger('radiomics.script')  # holds logger for script events
@@ -46,12 +46,13 @@ class PyRadiomicsCommandLine:
     inputGroup = parser.add_argument_group(title='Input',
                                            description='Input files and arguments defining the extraction:\n'
                                                        '- image and mask files (single mode) '
-                                                       'or CSV-file specifying them (batch mode)\n'
+                                                       'or folder path (batch mode)\n'  # 'or CSV-file specifying 
+                                                                                        # them (batch mode)\n' OLD
                                                        '- Parameter file (.yml/.yaml or .json)\n'
                                                        '- Overrides for customization type 3 ("settings")\n'
                                                        '- Multi-threaded batch processing')
     inputGroup.add_argument('input', metavar='{Image,Batch}FILE',
-                            help='Image file (single mode) or CSV batch file (batch mode)')
+                            help='Image file (single mode) or folder path (batch mode)')
     inputGroup.add_argument('mask', nargs='?', metavar='MaskFILE', default=None,
                             help='Mask file identifying the ROI in the Image. \n'
                                  'Only required when in single mode, ignored otherwise.')
@@ -153,6 +154,7 @@ class PyRadiomicsCommandLine:
     self.case_count = 1
     self.num_workers = 1
 
+    # TODO change csv to folder path
     # Check if input represents a batch file
     if self.args.input.endswith('.csv'):
       self.logger.debug('Loading batch file "%s"', self.args.input)
@@ -491,7 +493,7 @@ class PyRadiomicsCommandLine:
 
 def parse_args():
   try:
-    return PyRadiomicsCommandLine().run()
+    return MyPyRadiomicsCommandLine().run()
   except Exception as e:
     logging.getLogger().error("Error executing PyRadiomics command line!", exc_info=True)
     print("Error executing PyRadiomics command line!\n%s" % e)
