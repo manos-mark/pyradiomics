@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import csv
+from collections import OrderedDict
 from functools import partial
 import json
 import logging.config
@@ -164,37 +165,42 @@ class MyPyRadiomicsCommandLine:
 
             patient_count = 0
             cases_dict = {}
-            for _, patients, _ in os.walk(self.args.input, 'patients'):
+            for _, patients, _ in os.walk(os.path.join(self.args.input, 'patients')):
+                print("!!!!!!!patients: ", patients)
                 for patient in patients:
                     patient_count += 1
                     print(str(patient_count) + ": " + patient)
-                    for _, _, files in os.walk(self.args.input + patient):
-                        for file in files:
-                            filename = file.rsplit("_")[0]
-                            filetype = file.rsplit("_")[1]
+                    print("!!!!!!!!!PATH: ", os.path.join(self.args.input, patient))
+                    # for _, _, files in os.walk(os.path.join(self.args.input, patient)):
+                    #     print("!!!!!!!!!FILE: ", files)
+                    #     for file in files:
+                    #         filename = file.rsplit("_")[0]
+                    #         filetype = file.rsplit("_")[1]
+                    #
+                    #         file_path = os.path.join(self.args.input, patient, file)
+                    #
+                    #         if not os.path.isabs(file_path):
+                    #             file_path = os.path.abspath(os.path.join(self.relative_path_start, file_path))
+                    #
+                    #         if filetype == 'image.nrrd':
+                    #             if filename in cases_dict.keys():
+                    #                 cases_dict[filename].update({'Image': file_path})
+                    #             else:
+                    #                 cases_dict[filename] = {'Image': file_path}
+                    #
+                    #         elif filetype == 'label.nrrd':
+                    #             if filename in cases_dict.keys():
+                    #                 cases_dict[filename].update({'Mask': file_path})
+                    #             else:
+                    #                 cases_dict[filename] = {'Mask': file_path}
 
-                            file_path = self.args.input + patient + "/" + file
-
-                            if not os.path.isabs(file_path):
-                                file_path = os.path.abspath(os.path.join(self.relative_path_start, file_path))
-
-                            if filetype == 'image.nrrd':
-                                if filename in cases_dict.keys():
-                                    cases_dict[filename].update({'Image': file_path})
-                                else:
-                                    cases_dict[filename] = {'Image': file_path}
-
-                            elif filetype == 'label.nrrd':
-                                if filename in cases_dict.keys():
-                                    cases_dict[filename].update({'Mask': file_path})
-                                else:
-                                    cases_dict[filename] = {'Mask': file_path}
-
-            # Convert cases dictionary into list of tuples
+            # Convert cases dictionary into list of OrderedDict
             # because caseGenerator must be in this form
             cases = []
-            for index, key in enumerate(cases_dict.keys()):
-                cases.append((index, cases_dict[key]))
+            for key in cases_dict.keys():
+                cases.append(OrderedDict((
+                    ('ID', key), ('Image', cases_dict[key]['Image']), ('Mask', cases_dict[key]['Mask']))
+                ))
 
             print(cases)
             self.case_count = len(cases)
