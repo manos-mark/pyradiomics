@@ -161,52 +161,52 @@ class MyPyRadiomicsCommandLine:
         # Check if input represents a batch file
         if self.args.input is not None:
             self.logger.debug('Loading batch folder "%s"', self.args.input)
-            self.relative_path_start = os.path.dirname(self.args.input)
 
-            patient_count = 0
             cases_dict = {}
-            for _, patients, _ in os.walk(os.path.join(self.args.input, 'patients')):
-                print("!!!!!!!patients: ", patients)
-                for patient in patients:
-                    patient_count += 1
-                    print(str(patient_count) + ": " + patient)
-                    print("!!!!!!!!!PATH: ", os.path.join(self.args.input, patient))
-                    # for _, _, files in os.walk(os.path.join(self.args.input, patient)):
-                    #     print("!!!!!!!!!FILE: ", files)
-                    #     for file in files:
-                    #         filename = file.rsplit("_")[0]
-                    #         filetype = file.rsplit("_")[1]
-                    #
-                    #         file_path = os.path.join(self.args.input, patient, file)
-                    #
-                    #         if not os.path.isabs(file_path):
-                    #             file_path = os.path.abspath(os.path.join(self.relative_path_start, file_path))
-                    #
-                    #         if filetype == 'image.nrrd':
-                    #             if filename in cases_dict.keys():
-                    #                 cases_dict[filename].update({'Image': file_path})
-                    #             else:
-                    #                 cases_dict[filename] = {'Image': file_path}
-                    #
-                    #         elif filetype == 'label.nrrd':
-                    #             if filename in cases_dict.keys():
-                    #                 cases_dict[filename].update({'Mask': file_path})
-                    #             else:
-                    #                 cases_dict[filename] = {'Mask': file_path}
+            patients = []
+            for _, dirs, _ in os.walk(os.path.join(self.args.input, 'patients')):
+                if len(dirs) != 0:
+                    patients = dirs
+            for i, patient in enumerate(patients):
+                for _, _, files in os.walk(os.path.join(self.args.input, 'patients', patient)):
+                    for file in files:
+                        filename = file.rsplit("_")[0]
+                        filetype = file.rsplit("_")[1]
+
+                        # Skip case when there is duplicate file in any patient directory
+                        if filename in cases_dict.keys() and 'Image' in cases_dict[filename].keys() \
+                                and 'Mask' in cases_dict[filename].keys():
+                            self.logger.warning('Batch %s: Already exists, skipping this case...', filename)
+                            continue
+
+                        file_path = os.path.join(self.args.input, 'patients', patient, file)
+
+                        if filetype == 'image.nrrd':
+                            if filename in cases_dict.keys():
+                                cases_dict[filename].update({'Image': file_path})
+                            else:
+                                cases_dict[filename] = {'Image': file_path}
+
+                        elif filetype == 'label.nrrd':
+                            if filename in cases_dict.keys():
+                                cases_dict[filename].update({'Mask': file_path})
+                            else:
+                                cases_dict[filename] = {'Mask': file_path}
 
             # Convert cases dictionary into list of OrderedDict
             # because caseGenerator must be in this form
             cases = []
             for key in cases_dict.keys():
+                if cases_dict[key]['Image'] is None or cases_dict[key]['Mask'] is None:
+                    self.logger.warning('Batch %s: Missing required Image or Mask, skipping this case...', key)
+                    continue
                 cases.append(OrderedDict((
                     ('ID', key), ('Image', cases_dict[key]['Image']), ('Mask', cases_dict[key]['Mask']))
                 ))
 
-            print(cases)
             self.case_count = len(cases)
-            caseGenerator = enumerate(cases)
+            caseGenerator = enumerate(cases, start=1)
             self.num_workers = min(self.case_count, self.args.jobs)
-
         elif self.args.mask is not None:
             caseGenerator = [(1, {'Image': self.args.input, 'Mask': self.args.mask})]
         else:
